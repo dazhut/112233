@@ -1,4 +1,22 @@
-const { ipcRenderer } = require('electron');
+// 删除原本的 const { ipcRenderer } = require('electron');
+
+// 使用 localStorage 替代数据库
+const PositionStore = {
+  save: async (data) => {
+    localStorage.setItem('positions', JSON.stringify({
+      ...data,
+      timestamp: new Date().toISOString()
+    }));
+    return true;
+  },
+  load: async () => {
+    const data = localStorage.getItem('positions');
+    return data ? JSON.parse(data) : null;
+  }
+};
+
+// 其余代码保持不变（路径点、地图初始化等）
+// ...
 
 // 景山公园周围的路径点
 const pathPoints = [
