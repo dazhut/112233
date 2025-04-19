@@ -1,0 +1,48 @@
+body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+  
+  #map {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+  
+  .moving-image {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    z-index: 1000;
+    margin: 0;
+    padding: 0;
+    transform: none;
+  }
+  
+  #runner {
+    background-image: url('images/runner.png');
+  }
+  
+  #chaser {
+    background-image: url('images/chaser.png');
+  }
+  
+  #controls {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    z-index: 1001;
+    background: rgba(255, 255, 255, 0.8);
+    padding: 10px;
+    border-radius: 5px;
+  }
+  
+  button {
+    margin: 0 5px;
+    padding: 5px 10px;
+  }
