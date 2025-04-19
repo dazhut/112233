@@ -1,108 +1,100 @@
-// 删除原本的 const { ipcRenderer } = require('electron');
+// 景山公园路径点数据
+const pathPoints = [
+  [116.3934, 39.9235], [116.3938, 39.9238], [116.3942, 39.9240],
+  [116.3945, 39.9242], [116.3948, 39.9245], [116.3950, 39.9248],
+  [116.3952, 39.9250], [116.3950, 39.9253], [116.3948, 39.9255],
+  [116.3945, 39.9257], [116.3942, 39.9258], [116.3938, 39.9259],
+  [116.3934, 39.9260], [116.3930, 39.9259], [116.3926, 39.9258],
+  [116.3923, 39.9257], [116.3920, 39.9255], [116.3918, 39.9253],
+  [116.3916, 39.9250], [116.3915, 39.9248], [116.3913, 39.9245],
+  [116.3912, 39.9242], [116.3915, 39.9240], [116.3918, 39.9238],
+  [116.3922, 39.9236], [116.3926, 39.9235], [116.3930, 39.9234]
+];
 
-// 使用 localStorage 替代数据库
-const PositionStore = {
-  save: async (data) => {
-    localStorage.setItem('positions', JSON.stringify({
-      ...data,
-      timestamp: new Date().toISOString()
-    }));
-    return true;
-  },
-  load: async () => {
-    const data = localStorage.getItem('positions');
-    return data ? JSON.parse(data) : null;
+// 游戏状态
+const gameState = {
+  map: null,
+  runnerIndex: 0,
+  chaserIndex: 0,
+  gameInterval: null,
+  isPaused: false,
+  speeds: {
+    runner: 2,  // 逃跑者每次移动2个点
+    chaser: 1   // 追逐者每次移动1个点
   }
 };
 
-// 其余代码保持不变（路径点、地图初始化等）
-// ...
-
-// 景山公园周围的路径点
-const pathPoints = [
-  [116.3934, 39.9235], // 景山公园南门
-  [116.3938, 39.9238],
-  [116.3942, 39.9240],
-  [116.3945, 39.9242],
-  [116.3948, 39.9245], // 东侧
-  [116.3950, 39.9248],
-  [116.3952, 39.9250],
-  [116.3950, 39.9253],
-  [116.3948, 39.9255], // 北侧
-  [116.3945, 39.9257],
-  [116.3942, 39.9258],
-  [116.3938, 39.9259],
-  [116.3934, 39.9260], // 北门
-  [116.3930, 39.9259],
-  [116.3926, 39.9258],
-  [116.3923, 39.9257],
-  [116.3920, 39.9255], // 西侧
-  [116.3918, 39.9253],
-  [116.3916, 39.9250],
-  [116.3915, 39.9248],
-  [116.3913, 39.9245],
-  [116.3912, 39.9242], // 南侧
-  [116.3915, 39.9240],
-  [116.3918, 39.9238],
-  [116.3922, 39.9236],
-  [116.3926, 39.9235],
-  [116.3930, 39.9234]
-];
-
-let map;
-let runnerIndex = 0;
-let chaserIndex = 0;
-let gameInterval;
-const speed = 0.0002; // 移动速度
-
 // 初始化地图
 function initMap() {
-  // 确保地图容器有正确尺寸
   const mapContainer = document.getElementById('map');
   mapContainer.style.width = '100%';
   mapContainer.style.height = '100%';
-  
-  map = new AMap.Map('map', {
+
+  gameState.map = new AMap.Map('map', {
     viewMode: '2D',
     zoom: 16,
     center: [116.3934, 39.9235],
     layers: [
       new AMap.TileLayer.Satellite(),
       new AMap.TileLayer.RoadNet()
-    ]
+    ],
+    showIndoorMap: false,
+    dragEnable: true,
+    zoomEnable: true,
+    doubleClickZoom: true
   });
 
-  // 添加事件监听
+  // 初始化事件监听
   document.getElementById('startBtn').addEventListener('click', startGame);
+  document.getElementById('pauseBtn').addEventListener('click', togglePause);
   document.getElementById('saveBtn').addEventListener('click', savePositions);
   document.getElementById('loadBtn').addEventListener('click', loadPositions);
-  
+
   // 初始位置
-  updatePosition('runner', pathPoints[runnerIndex]);
-  updatePosition('chaser', pathPoints[chaserIndex]);
+  updatePosition('runner', pathPoints[gameState.runnerIndex]);
+  updatePosition('chaser', pathPoints[gameState.chaserIndex]);
 }
 
 // 开始游戏
 function startGame() {
-  if (gameInterval) clearInterval(gameInterval);
+  if (gameState.gameInterval) {
+    clearInterval(gameState.gameInterval);
+  }
   
-  gameInterval = setInterval(() => {
-    // 追逐者移动
-    chaserIndex = (chaserIndex + 1) % pathPoints.length;
-    updatePosition('chaser', pathPoints[chaserIndex]);
-    
-    // 逃跑者移动 (比追逐者快一点)
-    runnerIndex = (runnerIndex + 2) % pathPoints.length;
-    updatePosition('runner', pathPoints[runnerIndex]);
-  }, 100);
+  gameState.isPaused = false;
+  document.getElementById('pauseBtn').textContent = '暂停';
+  
+  gameState.gameInterval = setInterval(() => {
+    if (!gameState.isPaused) {
+      // 追逐者移动
+      gameState.chaserIndex = (gameState.chaserIndex + gameState.speeds.chaser) % pathPoints.length;
+      updatePosition('chaser', pathPoints[gameState.chaserIndex]);
+      
+      // 逃跑者移动
+      gameState.runnerIndex = (gameState.runnerIndex + gameState.speeds.runner) % pathPoints.length;
+      updatePosition('runner', pathPoints[gameState.runnerIndex]);
+      
+      // 检查是否抓到
+      if (gameState.chaserIndex === gameState.runnerIndex) {
+        alert('抓到啦！游戏结束');
+        clearInterval(gameState.gameInterval);
+      }
+    }
+  }, 200);
 }
 
-// 更新图片位置
+// 暂停/继续游戏
+function togglePause() {
+  gameState.isPaused = !gameState.isPaused;
+  document.getElementById('pauseBtn').textContent = gameState.isPaused ? '继续' : '暂停';
+}
+
+// 更新元素位置
 function updatePosition(elementId, lngLat) {
-  const pixel = map.lngLatToContainer(new AMap.LngLat(lngLat[0], lngLat[1]));
+  const pixel = gameState.map.lngLatToContainer(new AMap.LngLat(lngLat[0], lngLat[1]));
   const element = document.getElementById(elementId);
   
-  // 考虑图片中心点
+  // 考虑元素中心点
   const halfWidth = element.offsetWidth / 2;
   const halfHeight = element.offsetHeight / 2;
   
@@ -110,48 +102,46 @@ function updatePosition(elementId, lngLat) {
   element.style.top = `${pixel.getY() - halfHeight}px`;
 }
 
-// 保存当前位置到数据库
-async function savePositions() {
-  const runnerPos = pathPoints[runnerIndex];
-  const chaserPos = pathPoints[chaserIndex];
+// 保存当前位置
+function savePositions() {
+  const positions = {
+    runnerX: pathPoints[gameState.runnerIndex][0],
+    runnerY: pathPoints[gameState.runnerIndex][1],
+    chaserX: pathPoints[gameState.chaserIndex][0],
+    chaserY: pathPoints[gameState.chaserIndex][1],
+    timestamp: new Date().toISOString()
+  };
   
   try {
-    await ipcRenderer.invoke('save-positions', {
-      runnerX: runnerPos[0],
-      runnerY: runnerPos[1],
-      chaserX: chaserPos[0],
-      chaserY: chaserPos[1]
-    });
-    alert('位置已保存');
-  } catch (error) {
-    console.error('保存位置失败:', error);
-    alert('保存位置失败');
+    localStorage.setItem('gamePositions', JSON.stringify(positions));
+    showMessage('位置已保存');
+  } catch (e) {
+    showMessage('保存失败: ' + e.message, true);
   }
 }
 
-// 从数据库加载位置
-async function loadPositions() {
+// 加载保存的位置
+function loadPositions() {
   try {
-    const positions = await ipcRenderer.invoke('load-positions');
-    if (positions) {
-      // 找到最近的路径点
-      runnerIndex = findClosestPointIndex(pathPoints, [positions.runnerX, positions.runnerY]);
-      chaserIndex = findClosestPointIndex(pathPoints, [positions.chaserX, positions.chaserY]);
+    const data = localStorage.getItem('gamePositions');
+    if (data) {
+      const positions = JSON.parse(data);
       
-      // 更新位置
-      updatePosition('runner', pathPoints[runnerIndex]);
-      updatePosition('chaser', pathPoints[chaserIndex]);
-      alert('位置已加载');
+      gameState.runnerIndex = findClosestPointIndex(pathPoints, [positions.runnerX, positions.runnerY]);
+      gameState.chaserIndex = findClosestPointIndex(pathPoints, [positions.chaserX, positions.chaserY]);
+      
+      updatePosition('runner', pathPoints[gameState.runnerIndex]);
+      updatePosition('chaser', pathPoints[gameState.chaserIndex]);
+      showMessage('位置已加载');
     } else {
-      alert('没有找到保存的位置');
+      showMessage('没有找到保存的位置', true);
     }
-  } catch (error) {
-    console.error('加载位置失败:', error);
-    alert('加载位置失败');
+  } catch (e) {
+    showMessage('加载失败: ' + e.message, true);
   }
 }
 
-// 找到最近的路径点索引
+// 找到最近的路径点
 function findClosestPointIndex(points, target) {
   let minDist = Infinity;
   let closestIndex = 0;
@@ -171,5 +161,29 @@ function findClosestPointIndex(points, target) {
   return closestIndex;
 }
 
-// 初始化
-document.addEventListener('DOMContentLoaded', initMap);
+// 显示临时消息
+function showMessage(msg, isError = false) {
+  const msgBox = document.createElement('div');
+  msgBox.textContent = msg;
+  msgBox.style.position = 'fixed';
+  msgBox.style.top = '20px';
+  msgBox.style.left = '50%';
+  msgBox.style.transform = 'translateX(-50%)';
+  msgBox.style.padding = '10px 20px';
+  msgBox.style.background = isError ? '#e74c3c' : '#2ecc71';
+  msgBox.style.color = 'white';
+  msgBox.style.borderRadius = '5px';
+  msgBox.style.zIndex = '2000';
+  msgBox.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+  
+  document.body.appendChild(msgBox);
+  
+  setTimeout(() => {
+    msgBox.style.opacity = '0';
+    msgBox.style.transition = 'opacity 0.5s';
+    setTimeout(() => msgBox.remove(), 500);
+  }, 2000);
+}
+
+// 页面加载完成后初始化
+window.addEventListener('DOMContentLoaded', initMap);
